@@ -17,7 +17,7 @@ export class CreateInvoiceDto {
   dueDate?: string;
 
   @ApiProperty({ example: 1500.00 })
-  @Type(() => Number) @IsNumber() @IsPositive()
+  @Type(() => Number) @IsNumber() @Min(0)
   amount: number;
 
   @ApiPropertyOptional({ default: 'EUR' })

@@ -112,7 +112,7 @@ export default function ContractDetailPage() {
     const form = new FormData();
     form.append('file', file);
     form.append('invoiceDate', new Date().toISOString().split('T')[0]);
-    form.append('amount', '0');
+    form.append('amount', '0');  // wird 0, kann nachträglich bearbeitet werden
     try {
       await api.post(`/contracts/${id}/invoices/upload`, form, {
         headers: { 'Content-Type': 'multipart/form-data' },
