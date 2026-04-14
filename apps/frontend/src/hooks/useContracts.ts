@@ -14,6 +14,8 @@ export function useContract(id: string) {
     queryKey: ['contracts', id],
     queryFn: () => api.get(`/contracts/${id}`).then((r) => r.data),
     enabled: !!id,
+    staleTime: 0,          // immer frisch laden
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -29,7 +31,10 @@ export function useUpdateContract(id: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: Partial<Contract>) => api.patch(`/contracts/${id}`, data).then((r) => r.data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['contracts'] }); qc.invalidateQueries({ queryKey: ['contracts', id] }); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['contracts'] });
+      qc.invalidateQueries({ queryKey: ['contracts', id] });
+    },
   });
 }
 

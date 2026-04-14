@@ -15,6 +15,7 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { Modal } from '../components/ui/Modal';
 import { Select } from '../components/ui/Select';
 import { useContract, useUpdateContract } from '../hooks/useContracts';
+import { useQueryClient } from '@tanstack/react-query';
 import { formatDate, formatCurrency, formatDaysUntil, paymentIntervalLabel } from '../utils/format';
 import { api } from '../services/api';
 import { DocumentType, ContractStatus, InvoiceStatus } from '../types';
@@ -49,6 +50,7 @@ export default function ContractDetailPage() {
   const navigate  = useNavigate();
   const { data: contract, isLoading, refetch } = useContract(id!);
   const updateContract = useUpdateContract(id!);
+  const queryClient = useQueryClient();
 
   // Refs für hidden file inputs
   const docInputRef = useRef<HTMLInputElement>(null);
@@ -90,6 +92,7 @@ export default function ContractDetailPage() {
       await api.post(`/contracts/${id}/documents`, form, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
+      await queryClient.invalidateQueries({ queryKey: ['contracts', id] });
       await refetch();
     } catch (err: any) {
       setUploadError(err.response?.data?.message ?? 'Upload fehlgeschlagen');
@@ -114,6 +117,7 @@ export default function ContractDetailPage() {
       await api.post(`/contracts/${id}/invoices/upload`, form, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
+      await queryClient.invalidateQueries({ queryKey: ['contracts', id] });
       await refetch();
     } catch (err: any) {
       setUploadError(err.response?.data?.message ?? 'Rechnungs-Upload fehlgeschlagen');
