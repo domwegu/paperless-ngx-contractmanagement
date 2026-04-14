@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Edit2, Upload, FileText, Receipt,
   Bell, Calendar, Building2, CreditCard, Link2,
-  Trash2, XCircle, ChevronDown
+  Trash2, XCircle, ChevronDown, Pencil
 } from 'lucide-react';
 import { AppLayout } from '../components/layout/AppLayout';
 import { TopBar } from '../components/layout/TopBar';
@@ -62,7 +62,9 @@ export default function ContractDetailPage() {
   const [docType,         setDocType]         = useState<DocumentType>('contract');
   const [showDocModal,    setShowDocModal]    = useState(false);
   const [showStatusModal, setShowStatusModal] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showDeleteModal,  setShowDeleteModal]  = useState(false);
+  const [editInvoice,      setEditInvoice]      = useState<any | null>(null);
+  const [invoiceForm,      setInvoiceForm]      = useState({ invoiceNumber: '', invoiceDate: '', dueDate: '', amount: '', currency: 'EUR', notes: '' });
   const [newStatus,       setNewStatus]       = useState<ContractStatus>('active');
   const [pendingFile,     setPendingFile]     = useState<File | null>(null);
 
@@ -130,6 +132,29 @@ export default function ContractDetailPage() {
   const updateInvoiceStatus = async (invoiceId: string, status: InvoiceStatus) => {
     await api.patch(`/contracts/${id}/invoices/${invoiceId}/status`, { status });
     refetch();
+  };
+
+  const openEditInvoice = (inv: any) => {
+    setInvoiceForm({
+      invoiceNumber: inv.invoiceNumber ?? '',
+      invoiceDate:   inv.invoiceDate?.split('T')[0] ?? '',
+      dueDate:       inv.dueDate?.split('T')[0] ?? '',
+      amount:        String(inv.amount ?? '0'),
+      currency:      inv.currency ?? 'EUR',
+      notes:         inv.notes ?? '',
+    });
+    setEditInvoice(inv);
+  };
+
+  const saveInvoice = async () => {
+    if (!editInvoice) return;
+    await api.patch(`/contracts/${id}/invoices/${editInvoice.id}`, {
+      ...invoiceForm,
+      amount: Number(invoiceForm.amount),
+    });
+    setEditInvoice(null);
+    await queryClient.invalidateQueries({ queryKey: ['contracts', id] });
+    await refetch();
   };
 
   const openPaperless = (docId: number) => {
@@ -385,6 +410,11 @@ export default function ContractDetailPage() {
                         <p className="text-sm font-medium tabular text-gray-800 flex-shrink-0">
                           {formatCurrency(inv.amount, inv.currency)}
                         </p>
+                        <button onClick={() => openEditInvoice(inv)}
+                          className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-blue-600 transition-colors"
+                          title="Rechnung bearbeiten">
+                          <Pencil size={13} />
+                        </button>
                         {inv.paperlessDocumentId && (
                           <button onClick={() => openPaperless(inv.paperlessDocumentId!)}
                             className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-blue-600 transition-colors"
@@ -472,6 +502,39 @@ export default function ContractDetailPage() {
           <Button variant="danger" icon={<Trash2 size={14} />} onClick={confirmDelete}>Löschen</Button>
         </div>
       </Modal>
+      {/* Modal: Rechnung bearbeiten */}
+      <Modal open={!!editInvoice} onClose={() => setEditInvoice(null)} title="Rechnung bearbeiten" size="sm">
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="Rechnungsnummer" value={invoiceForm.invoiceNumber}
+              onChange={(e) => setInvoiceForm(f => ({ ...f, invoiceNumber: e.target.value }))}
+              placeholder="RE-2024-001" />
+            <Input label="Währung" value={invoiceForm.currency}
+              onChange={(e) => setInvoiceForm(f => ({ ...f, currency: e.target.value }))} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="Rechnungsdatum" type="date" value={invoiceForm.invoiceDate}
+              onChange={(e) => setInvoiceForm(f => ({ ...f, invoiceDate: e.target.value }))} />
+            <Input label="Fällig am" type="date" value={invoiceForm.dueDate}
+              onChange={(e) => setInvoiceForm(f => ({ ...f, dueDate: e.target.value }))} />
+          </div>
+          <Input label="Betrag" type="number" min={0} step="0.01" value={invoiceForm.amount}
+            onChange={(e) => setInvoiceForm(f => ({ ...f, amount: e.target.value }))}
+            placeholder="0.00" />
+          <div>
+            <label className="text-xs font-medium text-gray-700 block mb-1">Notizen</label>
+            <textarea value={invoiceForm.notes} rows={2}
+              onChange={(e) => setInvoiceForm(f => ({ ...f, notes: e.target.value }))}
+              className="w-full px-3 py-2 text-sm rounded-md border border-gray-300 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15 transition-all resize-none"
+              placeholder="Optionale Notizen…" />
+          </div>
+        </div>
+        <div className="flex justify-end gap-2 mt-5">
+          <Button variant="secondary" onClick={() => setEditInvoice(null)}>Abbrechen</Button>
+          <Button onClick={saveInvoice}>Speichern</Button>
+        </div>
+      </Modal>
+
     </AppLayout>
   );
 }

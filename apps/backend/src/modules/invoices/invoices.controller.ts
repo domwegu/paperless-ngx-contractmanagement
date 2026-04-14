@@ -7,6 +7,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
 import { InvoicesService } from './invoices.service';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
+import { UpdateInvoiceDto } from './dto/update-invoice.dto';
 import { InvoiceStatus } from './invoice.entity';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -57,6 +58,17 @@ export class InvoicesController {
     @CurrentUser() user: User,
   ) {
     return this.invoicesService.findByContract(contractId, user.tenantId);
+  }
+
+  @Patch(':invoiceId')
+  @ApiOperation({ summary: 'Rechnungsdaten bearbeiten' })
+  update(
+    @Param('contractId', ParseUUIDPipe) contractId: string,
+    @Param('invoiceId', ParseUUIDPipe) invoiceId: string,
+    @Body() dto: UpdateInvoiceDto,
+    @CurrentUser() user: User,
+  ) {
+    return this.invoicesService.update(invoiceId, user.tenantId, dto);
   }
 
   @Patch(':invoiceId/status')

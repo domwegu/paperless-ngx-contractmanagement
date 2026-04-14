@@ -5,6 +5,7 @@ import { Invoice, InvoiceStatus } from './invoice.entity';
 import { Contract } from '../contracts/contract.entity';
 import { PaperlessService } from '../paperless/paperless.service';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
+import { UpdateInvoiceDto } from './dto/update-invoice.dto';
 
 @Injectable()
 export class InvoicesService {
@@ -83,6 +84,15 @@ export class InvoicesService {
       throw new NotFoundException('Rechnung nicht gefunden');
     }
     invoice.status = status;
+    return this.invoiceRepo.save(invoice);
+  }
+
+  async update(id: string, tenantId: string, dto: UpdateInvoiceDto): Promise<Invoice> {
+    const invoice = await this.invoiceRepo.findOne({ where: { id }, relations: ['contract'] });
+    if (!invoice || invoice.contract.tenantId !== tenantId) {
+      throw new NotFoundException('Rechnung nicht gefunden');
+    }
+    Object.assign(invoice, dto);
     return this.invoiceRepo.save(invoice);
   }
 
