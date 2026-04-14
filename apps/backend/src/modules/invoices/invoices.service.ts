@@ -33,8 +33,9 @@ export class InvoicesService {
     if (!contract) throw new NotFoundException('Vertrag nicht gefunden');
 
     // Sofort speichern ohne Paperless-ID
-    const invoice = this.invoiceRepo.create({ ...dto, contractId, paperlessDocumentId: null });
-    const saved = await this.invoiceRepo.save(invoice);
+    const invoice = this.invoiceRepo.create({ ...dto, contractId });
+    invoice.paperlessDocumentId = null;
+    const saved = await this.invoiceRepo.save(invoice) as Invoice;
 
     // Paperless-Upload im Hintergrund
     this.uploadInvoiceToPaperlessAsync(saved, contract, file, dto, tenantId);

@@ -43,7 +43,7 @@ export class Invoice {
   status: InvoiceStatus;
 
   @Column({ nullable: true })
-  paperlessDocumentId: number;      // Referenz in Paperless
+  paperlessDocumentId: number | null;      // Referenz in Paperless
 
   @Column({ nullable: true })
   notes: string;
