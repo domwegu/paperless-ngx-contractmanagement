@@ -132,11 +132,22 @@ export default function ContractDetailPage() {
     refetch();
   };
 
-  const openPaperless = async (docId: number) => {
-    try {
-      const { data } = await api.get(`/paperless/documents/${docId}/urls`);
-      window.open(data.preview, '_blank');
-    } catch { alert('Dokument in Paperless nicht erreichbar'); }
+  const openPaperless = (docId: number) => {
+    // Backend-Proxy: JWT wird serverseitig an Paperless weitergegeben
+    const token = localStorage.getItem('accessToken');
+    const url = `/api/paperless/documents/${docId}/preview`;
+    // Neues Fenster mit Token im Header geht nicht direkt —
+    // wir öffnen einen Blob-URL
+    fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => {
+        if (!r.ok) throw new Error('Nicht erreichbar');
+        return r.blob();
+      })
+      .then((blob) => {
+        const blobUrl = URL.createObjectURL(blob);
+        window.open(blobUrl, '_blank');
+      })
+      .catch(() => alert('Dokument in Paperless nicht erreichbar'));
   };
 
   const confirmStatusChange = async () => {
