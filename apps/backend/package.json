@@ -7,7 +7,7 @@
     "start:debug": "nest start --debug --watch",
     "lint": "eslint \"{src,apps,libs}/**/*.ts\"",
     "test": "jest",
-    "seed": "ts-node -r tsconfig-paths/register src/database/seed.ts",
+    "seed": "npx ts-node -r tsconfig-paths/register src/database/seed.ts",
     "typeorm": "typeorm-ts-node-commonjs"
   },
   "dependencies": {
@@ -44,6 +44,8 @@
     "@types/nodemailer": "^6.4.0",
     "@types/passport-jwt": "^3.0.0",
     "@types/passport-local": "^1.0.0",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "ts-node": "^10.9.0",
+    "tsconfig-paths": "^4.2.0"
   }
 }
