@@ -27,10 +27,10 @@ export class Reminder {
   @JoinColumn({ name: 'contract_id' })
   contract: Contract;
 
-  @Column()
+  @Column({ name: 'contract_id' })
   contractId: string;
 
-  @Column()
+  @Column({ name: 'tenant_id' })
   tenantId: string;
 
   @Column({ type: 'enum', enum: ReminderType })

@@ -21,7 +21,7 @@ export class Invoice {
   @JoinColumn({ name: 'contract_id' })
   contract: Contract;
 
-  @Column()
+  @Column({ name: 'contract_id' })
   contractId: string;
 
   @Column({ nullable: true })

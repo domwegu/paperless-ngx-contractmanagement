@@ -31,7 +31,7 @@ export class Contract {
   @JoinColumn({ name: 'tenant_id' })
   tenant: Tenant;
 
-  @Column()
+  @Column({ name: 'tenant_id' })
   tenantId: string;
 
   // ─── Basisdaten ────────────────────────────
