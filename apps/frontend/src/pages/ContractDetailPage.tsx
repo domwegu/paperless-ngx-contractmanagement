@@ -14,6 +14,7 @@ import { PageSpinner } from '../components/ui/Spinner';
 import { EmptyState } from '../components/ui/EmptyState';
 import { Modal } from '../components/ui/Modal';
 import { Select } from '../components/ui/Select';
+import { Input } from '../components/ui/Input';
 import { useContract, useUpdateContract } from '../hooks/useContracts';
 import { useQueryClient } from '@tanstack/react-query';
 import { formatDate, formatCurrency, formatDaysUntil, paymentIntervalLabel } from '../utils/format';
