@@ -147,15 +147,28 @@ export default function ContractDetailPage() {
     setEditInvoice(inv);
   };
 
+  const [savingInvoice, setSavingInvoice] = useState(false);
+
   const saveInvoice = async () => {
     if (!editInvoice) return;
-    await api.patch(`/contracts/${id}/invoices/${editInvoice.id}`, {
-      ...invoiceForm,
-      amount: Number(invoiceForm.amount),
-    });
-    setEditInvoice(null);
-    await queryClient.invalidateQueries({ queryKey: ['contracts', id] });
-    await refetch();
+    setSavingInvoice(true);
+    try {
+      await api.patch(`/contracts/${id}/invoices/${editInvoice.id}`, {
+        invoiceNumber: invoiceForm.invoiceNumber || undefined,
+        invoiceDate:   invoiceForm.invoiceDate   || undefined,
+        dueDate:       invoiceForm.dueDate        || undefined,
+        amount:        invoiceForm.amount !== '' ? Number(invoiceForm.amount) : undefined,
+        currency:      invoiceForm.currency       || undefined,
+        notes:         invoiceForm.notes          || undefined,
+      });
+      setEditInvoice(null);
+      await queryClient.invalidateQueries({ queryKey: ['contracts', id] });
+      await refetch();
+    } catch (err: any) {
+      setUploadError(err.response?.data?.message ?? 'Speichern fehlgeschlagen');
+    } finally {
+      setSavingInvoice(false);
+    }
   };
 
   const openPaperless = (docId: number) => {
@@ -532,7 +545,7 @@ export default function ContractDetailPage() {
         </div>
         <div className="flex justify-end gap-2 mt-5">
           <Button variant="secondary" onClick={() => setEditInvoice(null)}>Abbrechen</Button>
-          <Button onClick={saveInvoice}>Speichern</Button>
+          <Button onClick={saveInvoice} loading={savingInvoice}>Speichern</Button>
         </div>
       </Modal>
 
