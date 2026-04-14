@@ -2,12 +2,8 @@ import { Injectable, Logger, BadGatewayException } from '@nestjs/common';
 import axios, { AxiosInstance } from 'axios';
 import * as FormData from 'form-data';
 import {
-  PaperlessDocument,
-  PaperlessTag,
-  PaperlessCorrespondent,
-  PaperlessDocumentType,
-  PaperlessPaginatedResult,
-  PaperlessUploadOptions,
+  PaperlessDocument, PaperlessTag, PaperlessCorrespondent,
+  PaperlessDocumentType, PaperlessPaginatedResult, PaperlessUploadOptions,
 } from './paperless.types';
 
 @Injectable()
@@ -23,7 +19,6 @@ export class PaperlessClient {
       },
       timeout: 30_000,
     });
-
     client.interceptors.response.use(
       (res) => res,
       (err) => {
@@ -37,8 +32,6 @@ export class PaperlessClient {
     );
     return client;
   }
-
-  // ─── Dokumente ───────────────────────────────
 
   async getDocuments(http: AxiosInstance, params?: any): Promise<PaperlessPaginatedResult<PaperlessDocument>> {
     const res = await http.get('/documents/', { params });
@@ -73,28 +66,40 @@ export class PaperlessClient {
     if (options.documentTypeId)  form.append('document_type', String(options.documentTypeId));
     if (options.tags?.length)    options.tags.forEach((t) => form.append('tags', String(t)));
 
-    let taskId: string;
+    const uploadedAt = new Date();
+    let taskId: string | null = null;
+
     try {
       const res = await http.post('/documents/post_document/', form, {
         headers: form.getHeaders(),
         timeout: 60_000,
       });
-      taskId = res.data?.task_id ?? res.data?.id;
+
+      const body = res.data;
+      this.logger.debug(`Upload Response [${res.status}]: ${JSON.stringify(body)}`);
+
+      // Paperless antwortet je nach Version unterschiedlich:
+      if (typeof body === 'number')                          return body;           // direkte ID
+      if (body?.task_id)                                     taskId = String(body.task_id);
+      else if (typeof body === 'string' && body.length > 8)  taskId = body.trim(); // plain-text UUID
+      else if (body?.id && typeof body.id === 'number')      return body.id;       // { id: 123 }
+
     } catch (err: any) {
-      // Paperless gibt manchmal 400 bei Duplikaten — trotzdem nach Titel suchen
       if (err?.response?.status === 400) {
-        this.logger.warn(`Upload abgelehnt (400), suche nach bestehendem Dokument: ${options.title}`);
+        this.logger.warn(`Upload 400 — suche bestehendes Dokument: ${options.title ?? fileName}`);
         const existing = await this.findDocumentByTitle(http, options.title ?? fileName);
-        if (existing) {
-          this.logger.log(`Bestehendes Dokument gefunden: ID ${existing.id}`);
-          return existing.id;
-        }
+        if (existing) return existing.id;
       }
       throw err;
     }
 
-    if (!taskId) throw new BadGatewayException('Paperless: Kein Task-ID im Upload-Response');
-    return this.pollTaskForDocumentId(http, taskId, options.title ?? fileName);
+    if (taskId) {
+      return this.pollTaskForDocumentId(http, taskId, options.title ?? fileName);
+    }
+
+    // Kein Task-ID im Response (Paperless hat Dokument trotzdem angenommen)
+    this.logger.warn('Kein Task-ID im Response — Fallback: warte und suche per Titel');
+    return this.waitAndFindByTitle(http, options.title ?? fileName, uploadedAt);
   }
 
   async updateDocument(http: AxiosInstance, id: number, patch: any): Promise<PaperlessDocument> {
@@ -105,8 +110,6 @@ export class PaperlessClient {
   async deleteDocument(http: AxiosInstance, id: number): Promise<void> {
     await http.delete(`/documents/${id}/`);
   }
-
-  // ─── Tags ────────────────────────────────────
 
   async getTags(http: AxiosInstance): Promise<PaperlessTag[]> {
     const res = await http.get('/tags/?page_size=500');
@@ -120,10 +123,9 @@ export class PaperlessClient {
 
   async findOrCreateTag(http: AxiosInstance, name: string): Promise<PaperlessTag> {
     const tags = await this.getTags(http);
-    return tags.find((t) => t.name.toLowerCase() === name.toLowerCase()) ?? this.createTag(http, name);
+    return tags.find((t) => t.name.toLowerCase() === name.toLowerCase())
+      ?? this.createTag(http, name);
   }
-
-  // ─── Korrespondenten ─────────────────────────
 
   async getCorrespondents(http: AxiosInstance): Promise<PaperlessCorrespondent[]> {
     const res = await http.get('/correspondents/?page_size=500');
@@ -137,10 +139,9 @@ export class PaperlessClient {
 
   async findOrCreateCorrespondent(http: AxiosInstance, name: string): Promise<PaperlessCorrespondent> {
     const list = await this.getCorrespondents(http);
-    return list.find((c) => c.name.toLowerCase() === name.toLowerCase()) ?? this.createCorrespondent(http, name);
+    return list.find((c) => c.name.toLowerCase() === name.toLowerCase())
+      ?? this.createCorrespondent(http, name);
   }
-
-  // ─── Document Types ───────────────────────────
 
   async getDocumentTypes(http: AxiosInstance): Promise<PaperlessDocumentType[]> {
     const res = await http.get('/document_types/?page_size=200');
@@ -149,12 +150,11 @@ export class PaperlessClient {
 
   async findOrCreateDocumentType(http: AxiosInstance, name: string): Promise<PaperlessDocumentType> {
     const list = await this.getDocumentTypes(http);
-    if (list.find((d) => d.name.toLowerCase() === name.toLowerCase())) return list.find((d) => d.name.toLowerCase() === name.toLowerCase())!;
+    const existing = list.find((d) => d.name.toLowerCase() === name.toLowerCase());
+    if (existing) return existing;
     const res = await http.post('/document_types/', { name });
     return res.data;
   }
-
-  // ─── Verbindungstest ─────────────────────────
 
   async testConnection(baseUrl: string, apiToken: string): Promise<boolean> {
     try {
@@ -164,13 +164,37 @@ export class PaperlessClient {
     } catch { return false; }
   }
 
-  // ─── Hilfsmethoden ───────────────────────────
-
   private async findDocumentByTitle(http: AxiosInstance, title: string): Promise<PaperlessDocument | null> {
     try {
-      const res = await http.get('/documents/', { params: { title__icontains: title, page_size: 5 } });
+      const res = await http.get('/documents/', {
+        params: { title__icontains: title, page_size: 5, ordering: '-added' },
+      });
       return res.data.results?.[0] ?? null;
     } catch { return null; }
+  }
+
+  private async waitAndFindByTitle(
+    http: AxiosInstance,
+    title: string,
+    uploadedAt: Date,
+    maxAttempts = 15,
+    intervalMs = 2000,
+  ): Promise<number> {
+    for (let i = 0; i < maxAttempts; i++) {
+      await new Promise((r) => setTimeout(r, intervalMs));
+      const doc = await this.findDocumentByTitle(http, title);
+      if (doc) {
+        const diffMs = new Date(doc.added).getTime() - uploadedAt.getTime();
+        if (diffMs > -10_000) {  // max 10s Toleranz
+          this.logger.log(`Dokument per Titel gefunden: ID ${doc.id}`);
+          return doc.id;
+        }
+      }
+    }
+    throw new BadGatewayException(
+      'Paperless: Dokument wurde hochgeladen, konnte aber nicht automatisch verknüpft werden. ' +
+      'Bitte prüfen Sie Paperless und tragen Sie die ID ggf. manuell nach.',
+    );
   }
 
   private async pollTaskForDocumentId(
@@ -183,26 +207,22 @@ export class PaperlessClient {
     for (let i = 0; i < maxAttempts; i++) {
       await new Promise((r) => setTimeout(r, intervalMs));
       try {
-        const res = await http.get(`/tasks/?task_id=${taskId}`);
+        const res  = await http.get(`/tasks/?task_id=${taskId}`);
         const task = res.data?.results?.[0] ?? res.data?.[0];
+        this.logger.debug(`Task [${i+1}/${maxAttempts}] status=${task?.status} doc=${task?.related_document}`);
 
-        if (task?.status === 'SUCCESS' && task?.related_document) {
-          return task.related_document;
-        }
+        if (task?.status === 'SUCCESS' && task?.related_document) return task.related_document;
         if (task?.status === 'FAILURE') {
-          // Bei Duplikat-Fehler: Dokument per Titel suchen
-          this.logger.warn(`Task fehlgeschlagen: ${task.result} — suche nach bestehendem Dokument`);
-          const existing = await this.findDocumentByTitle(http, fallbackTitle);
-          if (existing) return existing.id;
-          throw new BadGatewayException(`Paperless Verarbeitung fehlgeschlagen: ${task.result}`);
+          const doc = await this.findDocumentByTitle(http, fallbackTitle);
+          if (doc) return doc.id;
+          throw new BadGatewayException(`Paperless Task fehlgeschlagen: ${task.result}`);
         }
       } catch (e: any) {
         if (e instanceof BadGatewayException) throw e;
       }
     }
-    // Timeout: Dokument trotzdem per Titel suchen bevor wir aufgeben
-    const existing = await this.findDocumentByTitle(http, fallbackTitle);
-    if (existing) return existing.id;
-    throw new BadGatewayException('Paperless: Dokument-ID nach Upload nicht ermittelbar (Timeout)');
+    const doc = await this.findDocumentByTitle(http, fallbackTitle);
+    if (doc) return doc.id;
+    throw new BadGatewayException('Paperless: Timeout beim Warten auf Dokument-ID');
   }
 }
