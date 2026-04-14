@@ -34,7 +34,7 @@ export class ContractDocument {
   @Column()
   title: string;
 
-  @Column({ nullable: true })
+  @Column({ type: 'int', nullable: true })
   paperlessDocumentId: number | null;      // Referenz in Paperless
 
   @Column({ nullable: true })

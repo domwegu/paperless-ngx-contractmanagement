@@ -42,7 +42,7 @@ export class Invoice {
   @Column({ type: 'enum', enum: InvoiceStatus, default: InvoiceStatus.OPEN })
   status: InvoiceStatus;
 
-  @Column({ nullable: true })
+  @Column({ type: 'int', nullable: true })
   paperlessDocumentId: number | null;      // Referenz in Paperless
 
   @Column({ nullable: true })
