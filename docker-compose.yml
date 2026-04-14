@@ -1,9 +1,5 @@
-
 services:
 
-  # ─────────────────────────────────────────────
-  # PostgreSQL
-  # ─────────────────────────────────────────────
   postgres:
     image: postgres:16-alpine
     container_name: vv_postgres
@@ -15,16 +11,13 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"          # nur für lokale Entwicklung, in prod entfernen
+      - "5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  # ─────────────────────────────────────────────
-  # Redis (Scheduler / Queue)
-  # ─────────────────────────────────────────────
   redis:
     image: redis:7-alpine
     container_name: vv_redis
@@ -37,9 +30,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # ─────────────────────────────────────────────
-  # Backend (NestJS)
-  # ─────────────────────────────────────────────
   backend:
     build:
       context: ./apps/backend
@@ -52,7 +42,7 @@ services:
       REDIS_HOST: redis
     volumes:
       - ./apps/backend:/app
-      - /app/node_modules          # node_modules im Container belassen
+      - /app/node_modules
     ports:
       - "${APP_PORT:-3000}:3000"
     depends_on:
@@ -61,9 +51,6 @@ services:
       redis:
         condition: service_healthy
 
-  # ─────────────────────────────────────────────
-  # Frontend (React + Vite Dev Server)
-  # ─────────────────────────────────────────────
   frontend:
     build:
       context: ./apps/frontend
@@ -76,7 +63,8 @@ services:
     ports:
       - "5173:5173"
     environment:
-      VITE_API_URL: http://localhost:${APP_PORT:-3000}
+      # Proxy-Target: intern im Docker-Netzwerk backend:3000
+      VITE_API_URL: http://backend:3000
     depends_on:
       - backend
 
