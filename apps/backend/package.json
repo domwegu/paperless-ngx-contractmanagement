@@ -6,7 +6,9 @@
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "lint": "eslint \"{src,apps,libs}/**/*.ts\"",
-    "test": "jest"
+    "test": "jest",
+    "seed": "ts-node -r tsconfig-paths/register src/database/seed.ts",
+    "typeorm": "typeorm-ts-node-commonjs"
   },
   "dependencies": {
     "@nestjs/common": "^10.0.0",
