@@ -3,6 +3,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { MulterModule } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
 
 import { AuthModule }          from './modules/auth/auth.module';
 import { TenantsModule }       from './modules/tenants/tenants.module';
@@ -16,10 +18,8 @@ import { PaperlessModule }     from './modules/paperless/paperless.module';
 
 @Module({
   imports: [
-    // Config (lädt .env)
     ConfigModule.forRoot({ isGlobal: true }),
 
-    // Datenbank
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (cfg: ConfigService) => ({
@@ -30,18 +30,17 @@ import { PaperlessModule }     from './modules/paperless/paperless.module';
         username: cfg.get('DB_USER'),
         password: cfg.get('DB_PASSWORD'),
         entities: [__dirname + '/modules/**/*.entity{.ts,.js}'],
-        synchronize: cfg.get('APP_ENV') === 'development', // NIEMALS in prod
+        synchronize: cfg.get('APP_ENV') === 'development',
         logging:    cfg.get('APP_ENV') === 'development',
       }),
     }),
 
-    // Cron-Jobs
-    ScheduleModule.forRoot(),
+    // Multer: Uploads im Arbeitsspeicher (werden direkt nach Paperless weitergeleitet)
+    MulterModule.register({ storage: memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } }),
 
-    // Rate Limiting
+    ScheduleModule.forRoot(),
     ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
 
-    // Feature-Module
     AuthModule,
     TenantsModule,
     UsersModule,
