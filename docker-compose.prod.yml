@@ -1,0 +1,40 @@
+version: '3.9'
+
+# Überschreibt docker-compose.yml für Production
+# Start: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+services:
+
+  postgres:
+    ports: []                        # kein externer DB-Port in prod
+
+  backend:
+    build:
+      context: ./apps/backend
+      dockerfile: Dockerfile
+    volumes: []                      # kein Live-Mount in prod
+    ports: []                        # nur intern, nginx kümmert sich darum
+
+  frontend:
+    build:
+      context: ./apps/frontend
+      dockerfile: Dockerfile
+    volumes: []
+    ports: []
+
+  # ─────────────────────────────────────────────
+  # Nginx Reverse Proxy (prod only)
+  # ─────────────────────────────────────────────
+  nginx:
+    image: nginx:alpine
+    container_name: vv_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+    depends_on:
+      - backend
+      - frontend
