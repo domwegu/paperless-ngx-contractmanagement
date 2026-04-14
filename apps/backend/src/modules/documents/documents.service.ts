@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ContractDocument, DocumentType } from './contract-document.entity';
@@ -7,6 +7,8 @@ import { PaperlessService } from '../paperless/paperless.service';
 
 @Injectable()
 export class DocumentsService {
+  private readonly logger = new Logger(DocumentsService.name);
+
   constructor(
     @InjectRepository(ContractDocument) private docRepo: Repository<ContractDocument>,
     @InjectRepository(Contract) private contractRepo: Repository<Contract>,
@@ -21,53 +23,83 @@ export class DocumentsService {
     title?: string,
     notes?: string,
   ): Promise<ContractDocument> {
-    // Vertrag laden (mandantensicher)
     const contract = await this.contractRepo.findOne({ where: { id: contractId, tenantId } });
     if (!contract) throw new NotFoundException('Vertrag nicht gefunden');
 
-    const docTitle = title ?? file.originalname;
+    const docTitle = title ?? file.originalname.replace(/\.[^/.]+$/, '');
 
-    // Upload nach Paperless mit automatischen Tags
-    const tagNames = [`Vertrag: ${contract.title}`, type === DocumentType.AMENDMENT ? 'Nachtrag' : 'Vertragsdokument'];
-    if (contract.partner) tagNames.push(contract.partner);
-
-    const paperlessId = await this.paperlessService.uploadWithMetadata(
-      tenantId,
-      file.buffer,
-      file.originalname,
-      file.mimetype,
-      {
-        title: docTitle,
-        correspondentName: contract.partner,
-        documentTypeName: type === DocumentType.AMENDMENT ? 'Nachtrag' : 'Vertrag',
-        tagNames,
-      },
-    );
-
-    // Eintrag in eigener DB
+    // Datensatz sofort anlegen — noch ohne Paperless-ID
     const doc = this.docRepo.create({
       contractId,
       type,
       title: docTitle,
-      paperlessDocumentId: paperlessId,
+      paperlessDocumentId: null,
       fileName: file.originalname,
       mimeType: file.mimetype,
       notes,
     });
+    const saved = await this.docRepo.save(doc);
 
-    // Erstes Dokument (Hauptvertrag) als Referenz am Vertrag speichern
-    if (type === DocumentType.CONTRACT && !contract.paperlessDocumentId) {
-      contract.paperlessDocumentId = paperlessId;
-      await this.contractRepo.save(contract);
+    // Paperless-Upload im Hintergrund — blockiert den Request nicht
+    this.uploadToPaperlessAsync(saved, contract, file, docTitle, tenantId);
+
+    return saved;
+  }
+
+  /**
+   * Läuft im Hintergrund — pollt bis zu 5 Minuten auf die Paperless-ID
+   * und aktualisiert den Datensatz sobald sie verfügbar ist.
+   */
+  private async uploadToPaperlessAsync(
+    doc: ContractDocument,
+    contract: Contract,
+    file: Express.Multer.File,
+    docTitle: string,
+    tenantId: string,
+  ): Promise<void> {
+    try {
+      const tagNames = [
+        `Vertrag: ${contract.title}`,
+        doc.type === DocumentType.AMENDMENT ? 'Nachtrag' : 'Vertragsdokument',
+      ];
+      if (contract.partner) tagNames.push(contract.partner);
+
+      const paperlessId = await this.paperlessService.uploadWithMetadata(
+        tenantId,
+        file.buffer,
+        file.originalname,
+        file.mimetype,
+        {
+          title: docTitle,
+          correspondentName: contract.partner,
+          documentTypeName: doc.type === DocumentType.AMENDMENT ? 'Nachtrag' : 'Vertrag',
+          tagNames,
+        },
+      );
+
+      // ID nachträglich setzen
+      await this.docRepo.update(doc.id, { paperlessDocumentId: paperlessId });
+
+      // Hauptdokument-Referenz am Vertrag setzen
+      if (doc.type === DocumentType.CONTRACT && !contract.paperlessDocumentId) {
+        await this.contractRepo.update(contract.id, { paperlessDocumentId: paperlessId });
+      }
+
+      this.logger.log(`✅ Dokument "${docTitle}" in Paperless abgelegt: ID ${paperlessId}`);
+    } catch (err: any) {
+      this.logger.error(`❌ Paperless-Upload fehlgeschlagen für "${docTitle}": ${err.message}`);
+      // Datensatz bleibt erhalten, nur ohne Paperless-ID
+      // User sieht das Dokument in der Liste, kann es aber nicht in Paperless öffnen
     }
-
-    return this.docRepo.save(doc);
   }
 
   async findByContract(contractId: string, tenantId: string): Promise<ContractDocument[]> {
     const contract = await this.contractRepo.findOne({ where: { id: contractId, tenantId } });
     if (!contract) throw new NotFoundException('Vertrag nicht gefunden');
-    return this.docRepo.find({ where: { contractId }, order: { uploadedAt: 'DESC' } });
+    return this.docRepo.find({
+      where: { contractId },
+      order: { uploadedAt: 'DESC' },
+    });
   }
 
   async getDocumentUrls(docId: string, tenantId: string) {
@@ -78,14 +110,24 @@ export class DocumentsService {
     if (!doc || doc.contract.tenantId !== tenantId) {
       throw new NotFoundException('Dokument nicht gefunden');
     }
+    if (!doc.paperlessDocumentId) {
+      return { download: null, preview: null, pending: true };
+    }
     return this.paperlessService.getDocumentUrls(tenantId, doc.paperlessDocumentId);
   }
 
   async remove(docId: string, tenantId: string): Promise<void> {
     const doc = await this.docRepo.findOne({ where: { id: docId }, relations: ['contract'] });
-    if (!doc || doc.contract.tenantId !== tenantId) throw new NotFoundException('Dokument nicht gefunden');
-    // Aus Paperless löschen
-    await this.paperlessService.deleteDocument(tenantId, doc.paperlessDocumentId);
+    if (!doc || doc.contract.tenantId !== tenantId) {
+      throw new NotFoundException('Dokument nicht gefunden');
+    }
+    if (doc.paperlessDocumentId) {
+      try {
+        await this.paperlessService.deleteDocument(tenantId, doc.paperlessDocumentId);
+      } catch {
+        this.logger.warn(`Dokument ${doc.paperlessDocumentId} konnte nicht aus Paperless gelöscht werden`);
+      }
+    }
     await this.docRepo.remove(doc);
   }
 }

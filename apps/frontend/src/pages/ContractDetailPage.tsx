@@ -316,11 +316,15 @@ export default function ContractDetailPage() {
                           {DOC_TYPE_LABELS[doc.type as DocumentType]} · {formatDate(doc.uploadedAt)}
                         </p>
                       </div>
-                      <button onClick={() => openPaperless(doc.paperlessDocumentId)}
-                        className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-blue-600 transition-colors"
-                        title="In Paperless öffnen">
-                        <Link2 size={13} />
-                      </button>
+                      {doc.paperlessDocumentId ? (
+                        <button onClick={() => openPaperless(doc.paperlessDocumentId!)}
+                          className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-blue-600 transition-colors"
+                          title="In Paperless öffnen">
+                          <Link2 size={13} />
+                        </button>
+                      ) : (
+                        <span className="text-xs text-orange-400 px-1" title="Paperless verarbeitet noch...">⏳</span>
+                      )}
                     </li>
                   ))}
                 </ul>

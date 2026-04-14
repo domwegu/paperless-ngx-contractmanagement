@@ -201,8 +201,8 @@ export class PaperlessClient {
     http: AxiosInstance,
     taskId: string,
     fallbackTitle: string,
-    maxAttempts = 20,
-    intervalMs = 1500,
+    maxAttempts = 60,
+    intervalMs = 3000,
   ): Promise<number> {
     for (let i = 0; i < maxAttempts; i++) {
       await new Promise((r) => setTimeout(r, intervalMs));
