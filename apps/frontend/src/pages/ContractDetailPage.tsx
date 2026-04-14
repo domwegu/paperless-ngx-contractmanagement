@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Edit2, Upload, FileText, Receipt,
   Bell, Calendar, Building2, CreditCard, Link2,
-  Trash2, XCircle, CheckCircle, ChevronDown
+  Trash2, XCircle, ChevronDown
 } from 'lucide-react';
 import { AppLayout } from '../components/layout/AppLayout';
 import { TopBar } from '../components/layout/TopBar';
@@ -46,35 +46,42 @@ const INVOICE_STATUS_OPTIONS = [
 
 export default function ContractDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
+  const navigate  = useNavigate();
   const { data: contract, isLoading, refetch } = useContract(id!);
   const updateContract = useUpdateContract(id!);
 
-  const [uploadingDoc,   setUploadingDoc]   = useState(false);
-  const [uploadingInv,   setUploadingInv]   = useState(false);
-  const [uploadError,    setUploadError]    = useState<string | null>(null);
-  const [docType,        setDocType]        = useState<DocumentType>('contract');
-  const [showDocModal,   setShowDocModal]   = useState(false);
+  // Refs für hidden file inputs
+  const docInputRef = useRef<HTMLInputElement>(null);
+  const invInputRef = useRef<HTMLInputElement>(null);
+
+  const [uploadingDoc,    setUploadingDoc]    = useState(false);
+  const [uploadingInv,    setUploadingInv]    = useState(false);
+  const [uploadError,     setUploadError]     = useState<string | null>(null);
+  const [docType,         setDocType]         = useState<DocumentType>('contract');
+  const [showDocModal,    setShowDocModal]    = useState(false);
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [newStatus,      setNewStatus]      = useState<ContractStatus>('active');
-  const [pendingFile,    setPendingFile]    = useState<File | null>(null);
+  const [newStatus,       setNewStatus]       = useState<ContractStatus>('active');
+  const [pendingFile,     setPendingFile]     = useState<File | null>(null);
 
-  // ─── Dokument hochladen ───────────────────────
+  // ─── Dokument: Datei gewählt → Typ-Modal öffnen ──
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setPendingFile(file);
+    setDocType('contract');
     setShowDocModal(true);
     e.target.value = '';
   };
 
+  // ─── Dokument: Upload nach Typ-Auswahl ───────────
+
   const confirmDocUpload = async () => {
     if (!pendingFile) return;
+    setShowDocModal(false);
     setUploadingDoc(true);
     setUploadError(null);
-    setShowDocModal(false);
     const form = new FormData();
     form.append('file', pendingFile);
     form.append('type', docType);
@@ -92,7 +99,7 @@ export default function ContractDetailPage() {
     }
   };
 
-  // ─── Rechnung hochladen ───────────────────────
+  // ─── Rechnung: Upload ────────────────────────────
 
   const handleInvoiceUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -116,33 +123,23 @@ export default function ContractDetailPage() {
     }
   };
 
-  // ─── Rechnungsstatus ändern ───────────────────
-
   const updateInvoiceStatus = async (invoiceId: string, status: InvoiceStatus) => {
     await api.patch(`/contracts/${id}/invoices/${invoiceId}/status`, { status });
     refetch();
   };
 
-  // ─── Dokument öffnen in Paperless ────────────
-
   const openPaperless = async (docId: number) => {
     try {
       const { data } = await api.get(`/paperless/documents/${docId}/urls`);
       window.open(data.preview, '_blank');
-    } catch {
-      alert('Dokument in Paperless nicht erreichbar');
-    }
+    } catch { alert('Dokument in Paperless nicht erreichbar'); }
   };
-
-  // ─── Status ändern ────────────────────────────
 
   const confirmStatusChange = async () => {
     await updateContract.mutateAsync({ status: newStatus });
     setShowStatusModal(false);
     refetch();
   };
-
-  // ─── Vertrag löschen ─────────────────────────
 
   const confirmDelete = async () => {
     await api.delete(`/contracts/${id}`);
@@ -156,26 +153,36 @@ export default function ContractDetailPage() {
 
   return (
     <AppLayout>
+      {/* Versteckte File-Inputs — außerhalb jeglicher Labels/Buttons */}
+      <input
+        ref={docInputRef}
+        type="file"
+        accept=".pdf,.doc,.docx"
+        className="hidden"
+        onChange={handleFileSelect}
+      />
+      <input
+        ref={invInputRef}
+        type="file"
+        accept=".pdf,.jpg,.jpeg,.png,.tiff"
+        className="hidden"
+        onChange={handleInvoiceUpload}
+      />
+
       <TopBar
         title={contract.title}
         subtitle={contract.contractNumber ? `Nr. ${contract.contractNumber}` : undefined}
         actions={
           <div className="flex items-center gap-2">
             <ContractStatusBadge status={contract.status} />
-
-            {/* Status ändern */}
             <Button variant="secondary" size="sm" icon={<ChevronDown size={14} />}
               onClick={() => { setNewStatus(contract.status as ContractStatus); setShowStatusModal(true); }}>
               Status
             </Button>
-
-            {/* Bearbeiten */}
             <Button variant="secondary" size="sm" icon={<Edit2 size={14} />}
               onClick={() => navigate(`/contracts/${id}/edit`)}>
               Bearbeiten
             </Button>
-
-            {/* Löschen */}
             <Button variant="danger" size="sm" icon={<Trash2 size={14} />}
               onClick={() => setShowDeleteModal(true)}>
               Löschen
@@ -190,18 +197,16 @@ export default function ContractDetailPage() {
           <ArrowLeft size={14} /> Zurück zur Liste
         </button>
 
-        {/* Upload-Fehler */}
         {uploadError && (
           <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-5 text-red-700">
             <XCircle size={16} />
-            <p className="text-sm">{uploadError}</p>
-            <button onClick={() => setUploadError(null)} className="ml-auto text-red-400 hover:text-red-600">
+            <p className="text-sm flex-1">{uploadError}</p>
+            <button onClick={() => setUploadError(null)} className="text-red-400 hover:text-red-600">
               <XCircle size={14} />
             </button>
           </div>
         )}
 
-        {/* Fristwarnung */}
         {(dl.urgent || dl.overdue) && contract.cancellationDeadline && (
           <div className={`flex items-center gap-3 rounded-xl px-4 py-3 mb-5 border
             ${dl.overdue ? 'bg-red-50 border-red-200 text-red-700' : 'bg-orange-50 border-orange-200 text-orange-700'}`}>
@@ -218,7 +223,6 @@ export default function ContractDetailPage() {
 
           {/* Linke Spalte */}
           <div className="lg:col-span-2 space-y-5">
-
             <Card>
               <CardHeader>
                 <h2 className="font-semibold text-gray-900 flex items-center gap-2">
@@ -226,14 +230,12 @@ export default function ContractDetailPage() {
                 </h2>
               </CardHeader>
               <div className="grid sm:grid-cols-2 gap-x-8 gap-y-3">
-                <DetailRow label="Partner"       value={contract.partner} />
-                <DetailRow label="E-Mail"        value={contract.partnerEmail} />
-                <DetailRow label="Adresse"       value={contract.partnerAddress} />
-                <DetailRow label="Telefon"       value={contract.partnerPhone} />
-                <DetailRow label="Kategorie"     value={contract.category} />
-                {contract.description && (
-                  <div className="sm:col-span-2"><DetailRow label="Beschreibung" value={contract.description} /></div>
-                )}
+                <DetailRow label="Partner"    value={contract.partner} />
+                <DetailRow label="E-Mail"     value={contract.partnerEmail} />
+                <DetailRow label="Adresse"    value={contract.partnerAddress} />
+                <DetailRow label="Telefon"    value={contract.partnerPhone} />
+                <DetailRow label="Kategorie"  value={contract.category} />
+                {contract.description && <div className="sm:col-span-2"><DetailRow label="Beschreibung" value={contract.description} /></div>}
               </div>
             </Card>
 
@@ -279,18 +281,21 @@ export default function ContractDetailPage() {
                 <h2 className="font-semibold text-gray-900 text-sm flex items-center gap-2">
                   <FileText size={15} className="text-gray-400" />
                   Dokumente
-                  {contract.documents?.length ? (
+                  {!!contract.documents?.length && (
                     <span className="text-xs bg-gray-100 text-gray-600 rounded-full px-1.5 py-0.5">
                       {contract.documents.length}
                     </span>
-                  ) : null}
+                  )}
                 </h2>
-                <label className="cursor-pointer">
-                  <input type="file" accept=".pdf,.doc,.docx" className="sr-only" onChange={handleFileSelect} />
-                  <Button size="sm" variant="ghost" icon={<Upload size={13} />} loading={uploadingDoc}>
-                    Hochladen
-                  </Button>
-                </label>
+                {/* Button triggert ref statt label-Wrapper */}
+                <Button
+                  size="sm" variant="ghost"
+                  icon={<Upload size={13} />}
+                  loading={uploadingDoc}
+                  onClick={() => docInputRef.current?.click()}
+                >
+                  Hochladen
+                </Button>
               </div>
 
               {!contract.documents?.length ? (
@@ -324,31 +329,33 @@ export default function ContractDetailPage() {
                 <h2 className="font-semibold text-gray-900 text-sm flex items-center gap-2">
                   <Receipt size={15} className="text-gray-400" />
                   Rechnungen
-                  {contract.invoices?.length ? (
+                  {!!contract.invoices?.length && (
                     <span className="text-xs bg-gray-100 text-gray-600 rounded-full px-1.5 py-0.5">
                       {contract.invoices.length}
                     </span>
-                  ) : null}
+                  )}
                 </h2>
-                <label className="cursor-pointer" title="Gescannte Rechnung hochladen → wird automatisch in Paperless abgelegt und dem Vertrag zugeordnet">
-                  <input type="file" accept=".pdf,.jpg,.jpeg,.png,.tiff" className="sr-only"
-                    onChange={handleInvoiceUpload} />
-                  <Button size="sm" variant="ghost" icon={<Upload size={13} />} loading={uploadingInv}>
-                    Scan
-                  </Button>
-                </label>
+                <Button
+                  size="sm" variant="ghost"
+                  icon={<Upload size={13} />}
+                  loading={uploadingInv}
+                  title="Gescannte Rechnung hochladen → wird in Paperless abgelegt und dem Vertrag zugeordnet"
+                  onClick={() => invInputRef.current?.click()}
+                >
+                  Scan
+                </Button>
               </div>
 
               {!contract.invoices?.length ? (
                 <EmptyState icon={<Receipt size={28} />} title="Keine Rechnungen"
-                  description="Laden Sie gescannte Rechnungen hoch. Diese werden automatisch in Paperless abgelegt." />
+                  description="PDF oder Scan hochladen — wird automatisch in Paperless abgelegt." />
               ) : (
                 <ul className="divide-y divide-gray-50">
                   {contract.invoices.map((inv) => (
                     <li key={inv.id} className="px-4 py-2.5">
                       <div className="flex items-center gap-3">
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm text-gray-800 truncate font-medium">
+                          <p className="text-sm font-medium text-gray-800 truncate">
                             {inv.invoiceNumber ? `Nr. ${inv.invoiceNumber}` : 'Rechnung'}
                           </p>
                           <p className="text-xs text-gray-400">
@@ -356,11 +363,9 @@ export default function ContractDetailPage() {
                             {inv.dueDate && ` · fällig ${formatDate(inv.dueDate)}`}
                           </p>
                         </div>
-                        <div className="text-right flex-shrink-0">
-                          <p className="text-sm font-medium tabular text-gray-800">
-                            {formatCurrency(inv.amount, inv.currency)}
-                          </p>
-                        </div>
+                        <p className="text-sm font-medium tabular text-gray-800 flex-shrink-0">
+                          {formatCurrency(inv.amount, inv.currency)}
+                        </p>
                         {inv.paperlessDocumentId && (
                           <button onClick={() => openPaperless(inv.paperlessDocumentId!)}
                             className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-blue-600 transition-colors"
@@ -369,7 +374,6 @@ export default function ContractDetailPage() {
                           </button>
                         )}
                       </div>
-                      {/* Rechnungsstatus */}
                       <div className="flex items-center gap-2 mt-1.5">
                         <InvoiceStatusBadge status={inv.status} />
                         <select
@@ -391,8 +395,8 @@ export default function ContractDetailPage() {
         </div>
       </div>
 
-      {/* Modal: Dokumenttyp wählen */}
-      <Modal open={showDocModal} onClose={() => setShowDocModal(false)} title="Dokument hochladen" size="sm">
+      {/* Modal: Dokumenttyp */}
+      <Modal open={showDocModal} onClose={() => setShowDocModal(false)} title="Dokumenttyp wählen" size="sm">
         <p className="text-sm text-gray-600 mb-4">
           Datei: <span className="font-medium">{pendingFile?.name}</span>
         </p>
@@ -404,59 +408,51 @@ export default function ContractDetailPage() {
         />
         <div className="flex justify-end gap-2 mt-5">
           <Button variant="secondary" onClick={() => setShowDocModal(false)}>Abbrechen</Button>
-          <Button icon={<Upload size={14} />} onClick={confirmDocUpload} loading={uploadingDoc}>
-            Hochladen
-          </Button>
+          <Button icon={<Upload size={14} />} onClick={confirmDocUpload}>Hochladen</Button>
         </div>
       </Modal>
 
-      {/* Modal: Status ändern */}
+      {/* Modal: Status */}
       <Modal open={showStatusModal} onClose={() => setShowStatusModal(false)} title="Status ändern" size="sm">
-        <p className="text-sm text-gray-600 mb-4">
-          Aktueller Status: <ContractStatusBadge status={contract.status} />
-        </p>
+        <div className="mb-4 flex items-center gap-2">
+          <span className="text-sm text-gray-600">Aktuell:</span>
+          <ContractStatusBadge status={contract.status} />
+        </div>
         <Select
           label="Neuer Status"
           options={STATUS_OPTIONS}
           value={newStatus}
           onChange={(e) => setNewStatus(e.target.value as ContractStatus)}
         />
-        <div className="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2.5 mt-3">
-          <p className="text-xs text-blue-700">
-            <strong>Hinweis:</strong> Der Status wird täglich auch automatisch aktualisiert (Cron-Job 07:00).
-            Manuelle Änderungen sind jederzeit möglich.
-          </p>
-        </div>
+        <p className="text-xs text-blue-600 bg-blue-50 rounded-lg px-3 py-2 mt-3">
+          Der Cron-Job aktualisiert den Status täglich automatisch um 07:00.
+          Manuelle Änderungen sind jederzeit möglich.
+        </p>
         <div className="flex justify-end gap-2 mt-5">
           <Button variant="secondary" onClick={() => setShowStatusModal(false)}>Abbrechen</Button>
-          <Button onClick={confirmStatusChange} loading={updateContract.isPending}>
-            Status setzen
-          </Button>
+          <Button onClick={confirmStatusChange} loading={updateContract.isPending}>Speichern</Button>
         </div>
       </Modal>
 
-      {/* Modal: Vertrag löschen */}
+      {/* Modal: Löschen */}
       <Modal open={showDeleteModal} onClose={() => setShowDeleteModal(false)} title="Vertrag löschen" size="sm">
-        <div className="flex items-start gap-3">
+        <div className="flex items-start gap-3 mb-6">
           <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
             <Trash2 size={18} className="text-red-600" />
           </div>
           <div>
             <p className="font-medium text-gray-900 mb-1">„{contract.title}" löschen?</p>
             <p className="text-sm text-gray-500">
-              Der Vertragsdatensatz wird gelöscht. Dokumente in Paperless bleiben erhalten.
+              Der Datensatz wird gelöscht. Dokumente in Paperless bleiben erhalten.
               Diese Aktion kann nicht rückgängig gemacht werden.
             </p>
           </div>
         </div>
-        <div className="flex justify-end gap-2 mt-6">
+        <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>Abbrechen</Button>
-          <Button variant="danger" icon={<Trash2 size={14} />} onClick={confirmDelete}>
-            Endgültig löschen
-          </Button>
+          <Button variant="danger" icon={<Trash2 size={14} />} onClick={confirmDelete}>Löschen</Button>
         </div>
       </Modal>
-
     </AppLayout>
   );
 }
