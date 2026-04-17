@@ -6,11 +6,10 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 5173,
+    allowedHosts: 'all',
     proxy: {
       '/api': {
-        // Im Container: VITE_API_URL=http://backend:3000
-        // Lokal ohne Docker: http://localhost:3000
-        target: process.env.VITE_API_URL || 'http://localhost:3000',
+        target: process.env.VITE_API_URL || 'http://backend:3000',
         changeOrigin: true,
       },
     },
