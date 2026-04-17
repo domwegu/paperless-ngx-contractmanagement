@@ -16,6 +16,10 @@ export class RolesGuard implements CanActivate {
     if (!requiredRoles) return true;
 
     const { user } = context.switchToHttp().getRequest();
+
+    // Super-Admin darf immer alles
+    if (user.role === UserRole.SUPER_ADMIN) return true;
+
     const hasRole = requiredRoles.some((role) => user.role === role);
     if (!hasRole) throw new ForbiddenException('Keine Berechtigung für diese Aktion');
     return true;

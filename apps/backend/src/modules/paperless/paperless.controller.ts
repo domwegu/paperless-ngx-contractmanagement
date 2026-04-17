@@ -118,7 +118,7 @@ export class PaperlessController {
 
   @Delete('documents/:id')
   @UseGuards(RolesGuard)
-  @Roles(UserRole.SUPER_ADMIN, UserRole.TENANT_ADMIN)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.CONTRACT_EDITOR)
   @ApiOperation({ summary: 'Dokument löschen' })
   deleteDocument(@CurrentUser() user: User, @Param('id', ParseIntPipe) id: number) {
     return this.paperlessService.deleteDocument(user.tenantId, id);

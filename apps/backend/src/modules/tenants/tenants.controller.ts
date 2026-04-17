@@ -41,7 +41,7 @@ export class TenantsController {
   }
 
   @Get(':id')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.TENANT_ADMIN)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
   @ApiOperation({ summary: 'Mandant nach ID abrufen' })
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.tenantsService.findOne(id);
@@ -65,14 +65,14 @@ export class TenantsController {
   // TENANT_ADMIN darf die eigenen Paperless-Settings pflegen
 
   @Get('my/paperless-settings')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.TENANT_ADMIN)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
   @ApiOperation({ summary: 'Eigene Paperless-Einstellungen abrufen (ohne Token)' })
   getMyPaperlessSettings(@CurrentUser() user: User) {
     return this.tenantsService.findOne(user.tenantId);
   }
 
   @Patch('my/paperless-settings')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.TENANT_ADMIN)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
   @ApiOperation({ summary: 'Paperless Base-URL und API-Token für eigenen Mandanten setzen' })
   updateMyPaperlessSettings(
     @CurrentUser() user: User,
@@ -85,7 +85,7 @@ export class TenantsController {
   }
 
   @Post('my/paperless-settings/test')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.TENANT_ADMIN)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Paperless-Verbindung testen' })
   testMyPaperlessConnection(@CurrentUser() user: User) {

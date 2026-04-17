@@ -7,6 +7,7 @@ import ContractDetailPage from './pages/ContractDetailPage';
 import ContractFormPage   from './pages/ContractFormPage';
 import RemindersPage      from './pages/RemindersPage';
 import SettingsPage       from './pages/SettingsPage';
+import UsersPage          from './pages/UsersPage';
 
 export default function App() {
   return (
@@ -20,6 +21,7 @@ export default function App() {
       <Route path="/contracts/:id" element={<ProtectedRoute><ContractDetailPage /></ProtectedRoute>} />
       <Route path="/contracts/:id/edit" element={<ProtectedRoute><ContractFormPage /></ProtectedRoute>} />
       <Route path="/reminders" element={<ProtectedRoute><RemindersPage /></ProtectedRoute>} />
+      <Route path="/users"    element={<ProtectedRoute><UsersPage /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
 
       <Route path="*" element={<Navigate to="/dashboard" replace />} />

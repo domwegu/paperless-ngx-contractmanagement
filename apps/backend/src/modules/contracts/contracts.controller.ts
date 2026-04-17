@@ -19,7 +19,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { User, UserRole } from '../users/user.entity';
+import { User, UserRole, canEditContracts } from '../users/user.entity';
 
 @ApiTags('Contracts')
 @ApiBearerAuth()
@@ -73,7 +73,7 @@ export class ContractsController {
 
   @Delete(':id')
   @UseGuards(RolesGuard)
-  @Roles(UserRole.SUPER_ADMIN, UserRole.TENANT_ADMIN)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.CONTRACT_EDITOR)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Vertrag als gekündigt markieren' })
   remove(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: User) {
@@ -130,7 +130,7 @@ export class ContractsController {
 
   @Delete(':contractId/documents/:docId')
   @UseGuards(RolesGuard)
-  @Roles(UserRole.SUPER_ADMIN, UserRole.TENANT_ADMIN)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.CONTRACT_EDITOR)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Dokument aus Vertrag und Paperless löschen' })
   removeDocument(

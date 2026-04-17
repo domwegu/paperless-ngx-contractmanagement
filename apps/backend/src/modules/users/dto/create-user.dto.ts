@@ -3,30 +3,22 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { UserRole } from '../user.entity';
 
 export class CreateUserDto {
-  @ApiProperty({ example: 'Max' })
-  @IsString() @IsNotEmpty()
+  @ApiProperty() @IsString() @IsNotEmpty()
   firstName: string;
 
-  @ApiProperty({ example: 'Mustermann' })
-  @IsString() @IsNotEmpty()
+  @ApiProperty() @IsString() @IsNotEmpty()
   lastName: string;
 
-  @ApiProperty({ example: 'max@muster.de' })
-  @IsEmail()
+  @ApiProperty() @IsEmail()
   email: string;
 
-  @ApiProperty({ minLength: 8 })
-  @IsString()
-  @MinLength(8)
+  @ApiProperty({ minLength: 8 }) @IsString() @MinLength(8)
   password: string;
 
-  @ApiPropertyOptional({ enum: UserRole, default: UserRole.USER })
-  @IsOptional()
-  @IsEnum(UserRole)
+  @ApiPropertyOptional({ enum: UserRole, default: UserRole.VIEWER })
+  @IsOptional() @IsEnum(UserRole)
   role?: UserRole;
 
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsUUID()
+  @ApiPropertyOptional() @IsOptional() @IsUUID()
   tenantId?: string;
 }

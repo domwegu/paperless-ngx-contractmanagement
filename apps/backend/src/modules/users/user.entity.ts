@@ -6,10 +6,22 @@ import {
 import { Tenant } from '../tenants/tenant.entity';
 
 export enum UserRole {
-  SUPER_ADMIN = 'super_admin',   // plattformweit
-  TENANT_ADMIN = 'tenant_admin', // Mandanten-Admin
-  USER = 'user',                 // normaler Nutzer
+  SUPER_ADMIN     = 'super_admin',      // plattformweit
+  ADMIN           = 'admin',            // Mandanten-Admin
+  CONTRACT_EDITOR = 'contract_editor',  // Verträge + Dokumente
+  INVOICE_EDITOR  = 'invoice_editor',   // nur Rechnungen
+  VIEWER          = 'viewer',           // nur lesen
 }
+
+// Hilfsfunktionen für Guards
+export const canEditContracts = (role: UserRole) =>
+  [UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.CONTRACT_EDITOR].includes(role);
+
+export const canEditInvoices = (role: UserRole) =>
+  [UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.CONTRACT_EDITOR, UserRole.INVOICE_EDITOR].includes(role);
+
+export const canManageUsers = (role: UserRole) =>
+  [UserRole.SUPER_ADMIN, UserRole.ADMIN].includes(role);
 
 @Entity('users')
 export class User {
@@ -28,7 +40,7 @@ export class User {
   @Column({ select: false })
   passwordHash: string;
 
-  @Column({ type: 'enum', enum: UserRole, default: UserRole.USER })
+  @Column({ type: 'enum', enum: UserRole, default: UserRole.VIEWER })
   role: UserRole;
 
   @Column({ default: true })
@@ -41,7 +53,7 @@ export class User {
   @JoinColumn({ name: 'tenant_id' })
   tenant: Tenant;
 
-  @Column({ nullable: true })
+  @Column({ name: 'tenant_id', nullable: true })
   tenantId: string;
 
   @CreateDateColumn()

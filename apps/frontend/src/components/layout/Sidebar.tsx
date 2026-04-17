@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import {
-  LayoutDashboard, FileText, Bell, Settings, LogOut, ChevronRight
+  LayoutDashboard, FileText, Bell, Users, Settings, LogOut, ChevronRight
 } from 'lucide-react';
 import { useAuthStore } from '../../store/auth.store';
 
@@ -8,6 +8,7 @@ const NAV = [
   { to: '/dashboard',  icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/contracts',  icon: FileText,         label: 'Verträge' },
   { to: '/reminders',  icon: Bell,             label: 'Erinnerungen' },
+  { to: '/users',      icon: Users,            label: 'Benutzer' },
   { to: '/settings',   icon: Settings,         label: 'Einstellungen' },
 ];
 
