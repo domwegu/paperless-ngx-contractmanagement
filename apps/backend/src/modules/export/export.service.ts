@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Contract, ContractStatus } from '../contracts/contract.entity';
 import * as ExcelJS from 'exceljs';
+import type { Cell } from 'exceljs';
 
 const STATUS_LABELS: Record<ContractStatus, string> = {
   active:    'Aktiv',
@@ -104,7 +105,7 @@ export class ExportService {
 
     // Header-Styling
     const headerRow = ws.getRow(1);
-    headerRow.eachCell((cell) => {
+    headerRow.eachCell((cell: Cell) => {
       cell.font      = { bold: true, color: { argb: 'FFFFFFFF' }, name: 'Arial', size: 10 };
       cell.fill      = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF132d52' } };
       cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
@@ -145,7 +146,7 @@ export class ExportService {
 
       // Zebra-Streifen
       const bgColor = i % 2 === 0 ? 'FFFFFFFF' : 'FFF8FAFC';
-      row.eachCell((cell) => {
+      row.eachCell((cell: Cell) => {
         cell.font      = { name: 'Arial', size: 10 };
         cell.fill      = { type: 'pattern', pattern: 'solid', fgColor: { argb: bgColor } };
         cell.alignment = { vertical: 'middle', wrapText: false };
@@ -189,7 +190,7 @@ export class ExportService {
     ];
 
     const h2 = ws2.getRow(1);
-    h2.eachCell((cell) => {
+    h2.eachCell((cell: Cell) => {
       cell.font  = { bold: true, color: { argb: 'FFFFFFFF' }, name: 'Arial', size: 10 };
       cell.fill  = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF132d52' } };
       cell.alignment = { vertical: 'middle', horizontal: 'center' };
@@ -214,7 +215,7 @@ export class ExportService {
       });
 
       const bg = i % 2 === 0 ? 'FFFFFFFF' : 'FFF8FAFC';
-      row.eachCell((cell) => {
+      row.eachCell((cell: Cell) => {
         cell.font  = { name: 'Arial', size: 10 };
         cell.fill  = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
         cell.alignment = { vertical: 'middle' };
@@ -309,8 +310,9 @@ export class ExportService {
 </html>`;
 
     // Puppeteer für PDF-Generierung
-    const puppeteer = await import('puppeteer');
-    const browser = await puppeteer.default.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const puppeteer = require('puppeteer');
+    const browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] });
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: 'networkidle0' });
     const pdf = await page.pdf({ format: 'A4', landscape: true, printBackground: true, margin: { top: '15mm', bottom: '15mm', left: '15mm', right: '15mm' } });
