@@ -19,11 +19,12 @@ export class AuthService {
 
   async login(dto: LoginDto) {
     // User mit passwordHash laden (select: false !)
-    const user = await this.userRepo.findOne({
-      where: { email: dto.email, isActive: true },
-      select: ['id', 'email', 'passwordHash', 'role', 'tenantId', 'firstName', 'lastName'],
-      relations: ['tenant'],
-    });
+    const user = await this.userRepo
+      .createQueryBuilder('u')
+      .addSelect('u.passwordHash')
+      .where('u.email = :email', { email: dto.email })
+      .andWhere('u.isActive = true')
+      .getOne();
 
     if (!user) throw new UnauthorizedException('E-Mail oder Passwort falsch');
 
