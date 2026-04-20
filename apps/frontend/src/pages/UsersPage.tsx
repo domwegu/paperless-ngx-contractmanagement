@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAuthStore } from '../store/auth.store';
 import { Plus, Pencil, UserX, UserCheck, KeyRound, Shield } from 'lucide-react';
 import { AppLayout } from '../components/layout/AppLayout';
 import { TopBar } from '../components/layout/TopBar';
@@ -29,13 +30,11 @@ const ROLE_OPTIONS = [
   { value: 'viewer',          label: 'Betrachter' },
 ];
 
-const EMPTY_FORM = { firstName: '', lastName: '', email: '', password: '', role: 'viewer' };
+const EMPTY_FORM = { firstName: '', lastName: '', email: '', password: '', role: 'viewer', tenantId: '' };
 const EMPTY_PW   = { newPassword: '', newPassword2: '' };
 
 export default function UsersPage() {
   const qc = useQueryClient();
-  const currentUser = useAuthStore((s) => s.user);
-
   const [showCreate,   setShowCreate]   = useState(false);
   const [editUser,     setEditUser]     = useState<any | null>(null);
   const [pwUser,       setPwUser]       = useState<any | null>(null);
@@ -43,6 +42,14 @@ export default function UsersPage() {
   const [pwForm,       setPwForm]       = useState(EMPTY_PW);
   const [error,        setError]        = useState('');
   const [pwError,      setPwError]      = useState('');
+
+  const isSuperAdmin = currentUser?.role === 'super_admin';
+
+  const { data: tenants } = useQuery({
+    queryKey: ['tenants'],
+    queryFn: () => api.get('/tenants').then((r) => r.data),
+    enabled: isSuperAdmin,
+  });
 
   const { data: users, isLoading } = useQuery({
     queryKey: ['users'],
@@ -52,7 +59,7 @@ export default function UsersPage() {
   const invalidate = () => qc.invalidateQueries({ queryKey: ['users'] });
 
   const createMutation = useMutation({
-    mutationFn: (data: any) => api.post('/users', data),
+    mutationFn: (data: any) => api.post('/users', { ...data, tenantId: data.tenantId || undefined }),
     onSuccess: () => { invalidate(); setShowCreate(false); setForm(EMPTY_FORM); setError(''); },
     onError: (e: any) => setError(e.response?.data?.message ?? 'Fehler beim Anlegen'),
   });
@@ -118,7 +125,7 @@ export default function UsersPage() {
             <>
               {/* Tabellenkopf */}
               <div className="grid grid-cols-[2fr_2fr_1.5fr_1fr_auto] gap-4 px-5 py-2.5 border-b border-gray-100 bg-gray-50 rounded-t-xl">
-                {['Name', 'E-Mail', 'Rolle', 'Letzter Login', ''].map((h) => (
+                {['Name', 'E-Mail', 'Rolle', isSuperAdmin ? 'Mandant' : 'Letzter Login', isSuperAdmin ? 'Letzter Login' : ''].filter(Boolean).map((h) => (
                   <span key={h} className="text-xs font-medium text-gray-500 uppercase tracking-wide">{h}</span>
                 ))}
               </div>
@@ -128,7 +135,7 @@ export default function UsersPage() {
                   const roleCfg = ROLE_LABELS[u.role] ?? { label: u.role, cls: 'bg-gray-100 text-gray-600' };
                   const isMe = u.id === currentUser?.id;
                   return (
-                    <li key={u.id} className={`grid grid-cols-[2fr_2fr_1.5fr_1fr_auto] gap-4 px-5 py-3.5 items-center ${!u.isActive ? 'opacity-50' : ''}`}>
+                    <li key={u.id} className={`grid ${isSuperAdmin ? 'grid-cols-[2fr_2fr_1.5fr_1fr_1fr_auto]' : 'grid-cols-[2fr_2fr_1.5fr_1fr_auto]'} gap-4 px-5 py-3.5 items-center ${!u.isActive ? 'opacity-50' : ''}`}>
                       <div>
                         <p className="text-sm font-medium text-gray-900">
                           {u.firstName} {u.lastName}
@@ -139,6 +146,9 @@ export default function UsersPage() {
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium w-fit ${roleCfg.cls}`}>
                         {roleCfg.label}
                       </span>
+                      {isSuperAdmin && (
+                        <p className="text-xs text-gray-500 truncate">{u.tenant?.name ?? '—'}</p>
+                      )}
                       <p className="text-xs text-gray-400">{u.lastLoginAt ? formatDate(u.lastLoginAt) : '—'}</p>
                       <div className="flex items-center gap-1">
                         {/* Bearbeiten */}
@@ -189,6 +199,17 @@ export default function UsersPage() {
             hint="Mindestens 8 Zeichen" />
           <Select label="Rolle" options={ROLE_OPTIONS} value={form.role}
             onChange={(e) => setForm(f => ({ ...f, role: e.target.value }))} />
+          {isSuperAdmin && tenants?.length > 0 && (
+            <Select
+              label="Mandant"
+              options={[
+                { value: '', label: '— Eigener Mandant —' },
+                ...tenants.map((t: any) => ({ value: t.id, label: t.name })),
+              ]}
+              value={form.tenantId}
+              onChange={(e) => setForm(f => ({ ...f, tenantId: e.target.value }))}
+            />
+          )}
         </div>
         {error && <p className="text-xs text-red-500 mt-2">{error}</p>}
         <div className="flex justify-end gap-2 mt-5">
