@@ -236,7 +236,7 @@ export class ExportService {
 
     ws2.autoFilter = { from: 'A1', to: `F${relevant.length + 1}` };
 
-    return wb.buffer as Promise<Buffer>;
+    return Buffer.from(await wb.xlsx.writeBuffer());
   }
 
   // ─── PDF Export ───────────────────────────────

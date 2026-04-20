@@ -67,7 +67,7 @@ export class PaperlessController {
       headers: { Authorization: (http.defaults.headers as any).Authorization },
       responseType: 'stream',
     });
-    res.setHeader('Content-Type', upstream.headers['content-type'] ?? 'application/pdf');
+    res.setHeader('Content-Type', String(upstream.headers['content-type'] ?? 'application/pdf'));
     res.setHeader('Content-Disposition', `inline; filename="document-${id}.pdf"`);
     upstream.data.pipe(res);
   }
@@ -85,8 +85,8 @@ export class PaperlessController {
       headers: { Authorization: (http.defaults.headers as any).Authorization },
       responseType: 'stream',
     });
-    const disposition = upstream.headers['content-disposition'] ?? `attachment; filename="document-${id}.pdf"`;
-    res.setHeader('Content-Type', upstream.headers['content-type'] ?? 'application/pdf');
+    const disposition = String(upstream.headers['content-disposition'] ?? `attachment; filename="document-${id}.pdf"`);
+    res.setHeader('Content-Type', String(upstream.headers['content-type'] ?? 'application/pdf'));
     res.setHeader('Content-Disposition', disposition);
     upstream.data.pipe(res);
   }
