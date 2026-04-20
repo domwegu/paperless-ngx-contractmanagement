@@ -4,7 +4,7 @@
 services:
 
   postgres:
-    ports: []                          # kein externer DB-Port in prod
+    ports: []
 
   redis:
     ports: []
@@ -13,8 +13,8 @@ services:
     build:
       context: ./apps/backend
       dockerfile: Dockerfile
-    volumes: []                        # kein Live-Mount
-    ports: []                          # nur intern, nginx leitet weiter
+    volumes: []
+    ports: []
     restart: always
     environment:
       APP_ENV: production
@@ -32,8 +32,8 @@ services:
     container_name: vv_nginx
     restart: always
     ports:
-      - "80:80"
-      - "443:443"
+      - "${NGINX_HTTP_PORT:-80}:80"
+      - "${NGINX_HTTPS_PORT:-443}:443"
     volumes:
       - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/certs:/etc/nginx/certs:ro
