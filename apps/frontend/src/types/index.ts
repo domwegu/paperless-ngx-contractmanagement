@@ -10,6 +10,8 @@ export interface Contract {
   title: string;
   contractNumber?: string;
   partner?: string;
+  partnerAddress?: string;
+  partnerPhone?: string;
   partnerEmail?: string;
   category?: string;
   description?: string;

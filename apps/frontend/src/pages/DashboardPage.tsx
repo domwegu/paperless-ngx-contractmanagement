@@ -1,4 +1,4 @@
-import { AlertTriangle, FileText, Clock, TrendingUp, CheckCircle, Bell } from 'lucide-react';
+import { AlertTriangle, Clock, TrendingUp, CheckCircle, Bell } from 'lucide-react';
 import { AppLayout } from '../components/layout/AppLayout';
 import { TopBar } from '../components/layout/TopBar';
 import { Card } from '../components/ui/Card';

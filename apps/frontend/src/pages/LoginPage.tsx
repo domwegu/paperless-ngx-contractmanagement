@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/auth.store';
 import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
 import { Mail, Lock, AlertCircle } from 'lucide-react';
 
 export default function LoginPage() {

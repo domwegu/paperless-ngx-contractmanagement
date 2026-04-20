@@ -60,15 +60,17 @@ export default function ContractFormPage() {
   }, [existing, isEdit, reset]);
 
   const onSubmit = async (data: FormData) => {
+    const { renewalType, ...rest } = data;
     const payload = {
-      ...data,
+      ...rest,
       amount:                data.amount               ? Number(data.amount)               : undefined,
       renewalPeriodMonths:   data.renewalPeriodMonths  ? Number(data.renewalPeriodMonths)  : undefined,
       noticePeriodDays:      data.noticePeriodDays     ? Number(data.noticePeriodDays)     : undefined,
       paymentIntervalMonths: data.paymentIntervalMonths ? Number(data.paymentIntervalMonths) : undefined,
-      startDate:  data.startDate  || undefined,
-      endDate:    data.endDate    || undefined,
-      signedDate: data.signedDate || undefined,
+      startDate:   data.startDate   || undefined,
+      endDate:     data.endDate     || undefined,
+      signedDate:  data.signedDate  || undefined,
+      renewalType: (data.renewalType as any) || undefined,
     };
     try {
       if (isEdit) {
