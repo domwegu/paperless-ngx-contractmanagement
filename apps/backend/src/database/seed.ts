@@ -2,40 +2,44 @@ import 'reflect-metadata';
 import { DataSource } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 
-// .env laden falls vorhanden (lokal nützlich)
 try { require('dotenv').config(); } catch {}
 
 import { Tenant } from '../modules/tenants/tenant.entity';
 import { User, UserRole } from '../modules/users/user.entity';
+import { Contract } from '../modules/contracts/contract.entity';
+import { ContractDocument } from '../modules/documents/contract-document.entity';
+import { Invoice } from '../modules/invoices/invoice.entity';
+import { Reminder } from '../modules/reminders/reminder.entity';
+import { ApiToken } from '../modules/export/api-token.entity';
 
 async function seed() {
   const ds = new DataSource({
     type: 'postgres',
-    host:     process.env.DB_HOST     ?? 'postgres',   // Docker-Service-Name als Fallback
+    host:     process.env.DB_HOST     ?? 'postgres',
     port:     Number(process.env.DB_PORT ?? 5432),
     database: process.env.DB_NAME     ?? 'vertragsverwaltung',
     username: process.env.DB_USER     ?? 'vv_user',
     password: process.env.DB_PASSWORD ?? 'changeme_db',
-    entities: [Tenant, User],
-    synchronize: true,
+    entities: [Tenant, User, Contract, ContractDocument, Invoice, Reminder, ApiToken],
+    synchronize: true,   // legt Tabellen an
     logging: false,
   });
 
   await ds.initialize();
-  console.log('🌱 Datenbankverbindung hergestellt, Seed wird ausgeführt...');
+  console.log('🌱 Datenbankverbindung hergestellt...');
 
   const tenantRepo = ds.getRepository(Tenant);
-  let tenant = await tenantRepo.findOne({ where: { slug: 'demo' } });
+  let tenant = await tenantRepo.findOne({ where: { slug: 'default' } });
   if (!tenant) {
     tenant = await tenantRepo.save(tenantRepo.create({
-      name: 'Demo GmbH',
-      slug: 'demo',
+      name: 'Standard-Mandant',
+      slug: 'default',
       paperlessBaseUrl:  process.env.PAPERLESS_BASE_URL  ?? '',
       paperlessApiToken: process.env.PAPERLESS_API_TOKEN ?? '',
     }));
-    console.log('✅ Demo-Mandant angelegt:', tenant.id);
+    console.log('✅ Mandant angelegt:', tenant.id);
   } else {
-    console.log('ℹ️  Demo-Mandant bereits vorhanden');
+    console.log('ℹ️  Mandant bereits vorhanden');
   }
 
   const userRepo = ds.getRepository(User);
@@ -50,12 +54,16 @@ async function seed() {
       role:      UserRole.SUPER_ADMIN,
       tenantId:  tenant.id,
     }));
-    console.log('✅ Super-Admin angelegt:');
-    console.log('   E-Mail:   admin@vertragsverwaltung.local');
-    console.log('   Passwort: Admin1234!');
-    console.log('⚠️  Bitte Passwort nach erstem Login ändern!');
+    console.log('✅ Admin angelegt: admin@vertragsverwaltung.local / Admin1234!');
+    console.log('⚠️  Passwort nach erstem Login bitte ändern!');
   } else {
-    console.log('ℹ️  Super-Admin bereits vorhanden');
+    // Sicherstellen dass tenant_id gesetzt ist
+    if (!exists.tenantId) {
+      await userRepo.update(exists.id, { tenantId: tenant.id });
+      console.log('✅ tenant_id für bestehenden Admin gesetzt');
+    } else {
+      console.log('ℹ️  Admin bereits vorhanden');
+    }
   }
 
   await ds.destroy();
