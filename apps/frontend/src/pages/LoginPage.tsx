@@ -77,7 +77,8 @@ export default function LoginPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@firma.de"
                   required
-                  className="w-full pl-9 pr-3 py-2.5 text-sm bg-white/8 border border-white/15 rounded-lg text-white placeholder:text-white/30 focus:outline-none focus:border-[#f59e0b]/60 focus:ring-2 focus:ring-[#f59e0b]/15 transition-all"
+                  className="w-full pl-9 pr-3 py-2.5 text-sm bg-white/10 border border-white/20 rounded-lg text-white placeholder:text-white/40 focus:outline-none focus:border-[#f59e0b]/80 focus:ring-2 focus:ring-[#f59e0b]/20 transition-all"
+                  style={{ colorScheme: 'dark' }}
                 />
               </div>
             </div>
@@ -92,7 +93,8 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
-                  className="w-full pl-9 pr-3 py-2.5 text-sm bg-white/8 border border-white/15 rounded-lg text-white placeholder:text-white/30 focus:outline-none focus:border-[#f59e0b]/60 focus:ring-2 focus:ring-[#f59e0b]/15 transition-all"
+                  className="w-full pl-9 pr-3 py-2.5 text-sm bg-white/10 border border-white/20 rounded-lg text-white placeholder:text-white/40 focus:outline-none focus:border-[#f59e0b]/80 focus:ring-2 focus:ring-[#f59e0b]/20 transition-all"
+                  style={{ colorScheme: 'dark' }}
                 />
               </div>
             </div>
