@@ -7,11 +7,9 @@ import { Response, Request } from 'express';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { IsString, IsNotEmpty } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { JwtService } from '@nestjs/jwt';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { ExportService } from './export.service';
 import { ApiTokenService } from './api-token.service';
+import { ExportAuthGuard } from './export-auth.guard';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { User } from '../users/user.entity';
@@ -33,31 +31,26 @@ export class ExportController {
 
   // ─── Export-Endpunkte (JWT oder API-Token) ───
 
-  private async resolveTenantId(req: Request, user?: User): Promise<string> {
-    const auth = req.headers.authorization ?? '';
-    // API-Token
-    if (auth.startsWith('Bearer vv_')) {
-      const entity = await this.apiTokenService.validate(auth.slice(7));
-      if (!entity) throw new UnauthorizedException('Ungültiger API-Token');
-      return entity.tenantId;
-    }
-    // JWT
-    if (user?.tenantId) return user.tenantId;
+  private resolveTenantId(req: any, user?: User): string {
+    if (req.exportTenantId) return req.exportTenantId;
+    if (user?.tenantId)     return user.tenantId;
+    if (req.user?.tenantId) return req.user.tenantId;
     throw new UnauthorizedException('Nicht authentifiziert');
   }
 
   @Get('contracts.json')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(ExportAuthGuard)
   @ApiOperation({ summary: 'Vertragsdaten als JSON (Power Query)' })
   async contractsJson(@Req() req: Request, @CurrentUser() user: User) {
-    const tenantId = await this.resolveTenantId(req, user);
+    const tenantId = this.resolveTenantId(req, user);
     return this.exportService.getContractsJson(tenantId);
   }
 
   @Get('contracts.xlsx')
+  @UseGuards(ExportAuthGuard)
   @ApiOperation({ summary: 'Vertragsdaten als Excel' })
   async contractsXlsx(@Req() req: Request, @Res() res: Response, @CurrentUser() user?: User) {
-    const tenantId = await this.resolveTenantId(req, user);
+    const tenantId = this.resolveTenantId(req, user);
     const buffer   = await this.exportService.generateXlsx(tenantId);
     const filename = `Vertraege_${new Date().toISOString().split('T')[0]}.xlsx`;
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -66,9 +59,10 @@ export class ExportController {
   }
 
   @Get('contracts.pdf')
+  @UseGuards(ExportAuthGuard)
   @ApiOperation({ summary: 'Vertragsliste als PDF' })
   async contractsPdf(@Req() req: Request, @Res() res: Response, @CurrentUser() user?: User) {
-    const tenantId = await this.resolveTenantId(req, user);
+    const tenantId = this.resolveTenantId(req, user);
     const buffer   = await this.exportService.generatePdf(tenantId);
     const filename = `Vertraege_${new Date().toISOString().split('T')[0]}.pdf`;
     res.setHeader('Content-Type', 'application/pdf');
