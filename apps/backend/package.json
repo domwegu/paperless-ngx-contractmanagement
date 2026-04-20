@@ -34,7 +34,9 @@
     "nodemailer": "^6.9.0",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.8.0",
-    "date-fns": "^3.3.0"
+    "date-fns": "^3.3.0",
+    "exceljs": "^4.4.0",
+    "puppeteer": "^22.0.0"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.0.0",

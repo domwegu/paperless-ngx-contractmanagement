@@ -15,6 +15,7 @@ import { InvoicesModule }      from './modules/invoices/invoices.module';
 import { RemindersModule }     from './modules/reminders/reminders.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { PaperlessModule }     from './modules/paperless/paperless.module';
+import { ExportModule }        from './modules/export/export.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { PaperlessModule }     from './modules/paperless/paperless.module';
     RemindersModule,
     NotificationsModule,
     PaperlessModule,
+    ExportModule,
   ],
 })
 export class AppModule {}

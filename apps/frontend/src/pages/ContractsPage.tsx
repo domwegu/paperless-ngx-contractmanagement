@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, Filter, FileText } from 'lucide-react';
+import { Plus, Search, FileText, Download, FileSpreadsheet } from 'lucide-react';
 import { AppLayout } from '../components/layout/AppLayout';
 import { TopBar } from '../components/layout/TopBar';
 import { Card } from '../components/ui/Card';
@@ -25,6 +25,20 @@ const STATUS_OPTIONS = [
 
 export default function ContractsPage() {
   const navigate  = useNavigate();
+
+  const exportFile = async (type: 'xlsx' | 'pdf') => {
+    const token = localStorage.getItem('accessToken');
+    const res = await fetch(`/api/export/contracts.${type}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const blob = await res.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `Vertraege_${new Date().toISOString().split('T')[0]}.${type}`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
   const [search,  setSearch]  = useState('');
   const [status,  setStatus]  = useState('');
   const [page,    setPage]    = useState(1);
@@ -42,9 +56,17 @@ export default function ContractsPage() {
         title="Verträge"
         subtitle={data ? `${data.meta.total} Verträge gesamt` : undefined}
         actions={
-          <Button icon={<Plus size={15} />} onClick={() => navigate('/contracts/new')}>
-            Neuer Vertrag
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" size="sm" icon={<FileSpreadsheet size={14} />} onClick={() => exportFile('xlsx')}>
+              Excel
+            </Button>
+            <Button variant="secondary" size="sm" icon={<Download size={14} />} onClick={() => exportFile('pdf')}>
+              PDF
+            </Button>
+            <Button icon={<Plus size={15} />} onClick={() => navigate('/contracts/new')}>
+              Neuer Vertrag
+            </Button>
+          </div>
         }
       />
 
