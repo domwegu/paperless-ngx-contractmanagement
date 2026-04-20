@@ -87,8 +87,16 @@ export class TenantsController {
   @Post('my/paperless-settings/test')
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Paperless-Verbindung testen' })
+  @ApiOperation({ summary: 'Paperless-Verbindung testen (eigener Mandant)' })
   testMyPaperlessConnection(@CurrentUser() user: User) {
     return this.paperlessService.testConnection(user.tenantId);
+  }
+
+  @Post(':id/paperless-test')
+  @Roles(UserRole.SUPER_ADMIN)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Paperless-Verbindung testen (beliebiger Mandant, nur super_admin)' })
+  testPaperlessConnection(@Param('id', ParseUUIDPipe) id: string) {
+    return this.paperlessService.testConnection(id);
   }
 }
